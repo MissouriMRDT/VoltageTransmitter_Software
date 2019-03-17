@@ -1,23 +1,41 @@
- #include <ESP8266WiFi.h>
- #include <sstream>
+// Voltage Transmitter Software //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Main ino File
+//
+// Created for 2019 Valkyrie by: Eli Verbrugge, Ethan Arneson
+// 
+// ESP8266-12e device plugs into battery pack and relays the measured voltage to the "#batteryvoltage" Slack channel. 
+//
 //finally found a good source https://forum.arduino.cc/index.php?topic=155218.0
 //https://github.com/esp8266/Arduino/blob/master/libraries/ESP8266WiFi/examples/BearSSL_Validation/BearSSL_Validation.ino is being used for the fetchInsecure() and other things.
-const char BUTTON_PIN = 0;
-#define STASSID "MST-PSK-N"
-#define STAPSK "JoeMiner"
-const char *ssid = STASSID;
-const char *pass = STAPSK;
-const char *host = "hooks.slack.com";
-const uint16_t port = 443;
-const char *path = "/services/T5R4XNGC8/BG2THPXDG/MsG8UnB8U7tCNEyyn1D0uRb5";
-std::string message = "Hello, World!"; //the actual message to be sent, as a c_str.
+
+// Libraries ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#include <ESP8266WiFi.h>
+#include <sstream>
+
+// Constants ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+const char BUTTON_PIN       = 0;
+#define VOLT_MEAS_PIN       A0
+#define PACK_VOLTS_MAX      33600 // volts
+#define PACK_VOLTS_MIN      21600 // volts
+#define PACK_VOLTS_ADC_MAX  974
+#define PACK_VOLTS_ADC_MIN  629 
+
+#define STASSID         "MST-PSK-N"
+#define STAPSK          "JoeMiner"
+const char *ssid        = STASSID;
+const char *pass        = STAPSK;
+const char *host        = "hooks.slack.com";
+const uint16_t port     = 443;
+const char *path        = "/services/T5R4XNGC8/BG2THPXDG/MsG8UnB8U7tCNEyyn1D0uRb5";
+std::string message     = "Hello, World!"; //the actual message to be sent, as a c_str.
 int mesSize = 0; // later size should be set to message.size() + 11;
 std::string mesSizeString = "";
 const char *messageC = "";
 const char *mesSizeC = "";
   WiFiClientSecure client;
   const char *request = "";
-  int pin = 0;
+  float adc_reading = 0;
+  float measured_voltage = 0;
 ADC_MODE(ADC_VCC) //set ADC pin to read mode.
 namespace patch
 {
@@ -92,12 +110,26 @@ void loop() {
   {
     timer = millis();
   }
-  if (millis() - timer > 2000)
+  if (millis() - timer > 10000)
   {
-    pin = analogRead(A0);
-    Serial.print(pin);
-    Serial.print("\r\n");
-    message = patch::to_string(pin);
+    adc_reading = analogRead(VOLT_MEAS_PIN);
+    Serial.print("ADC: ");
+    Serial.println(adc_reading);
+
+    if(adc_reading < PACK_VOLTS_ADC_MIN)
+    {
+      adc_reading = PACK_VOLTS_ADC_MIN;
+    }
+    if(adc_reading > PACK_VOLTS_ADC_MAX)
+    {
+      adc_reading = PACK_VOLTS_ADC_MIN;
+    }
+    
+    measured_voltage = map(adc_reading, PACK_VOLTS_ADC_MIN, PACK_VOLTS_ADC_MAX, PACK_VOLTS_MIN, PACK_VOLTS_MAX);
+    Serial.print("Voltage: ");
+    Serial.println(measured_voltage);
+
+    message = patch::to_string(measured_voltage);
     fetchInsecure();
   }
 }
