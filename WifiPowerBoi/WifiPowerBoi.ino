@@ -14,19 +14,19 @@
 
 // Constants ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const char BUTTON_PIN       = 0;
-#define VOLT_MEAS_PIN       A0
-#define PACK_VOLTS_MAX      33600 // volts
-#define PACK_VOLTS_MIN      21600 // volts
-#define PACK_VOLTS_ADC_MAX  974
-#define PACK_VOLTS_ADC_MIN  629 
+//#define VOLT_MEAS_PIN       A0
+const int PACK_VOLTS_MAX      =33600; // volts
+const int PACK_VOLTS_MIN      =21600; // volts
+const int PACK_VOLTS_ADC_MAX  =974;
+const int PACK_VOLTS_ADC_MIN  =629; 
 
-#define STASSID         "MST-PSK-N"
-#define STAPSK          "JoeMiner"
+#define STASSID         ""
+#define STAPSK          ""
 const char *ssid        = STASSID;
 const char *pass        = STAPSK;
 const char *host        = "hooks.slack.com";
 const uint16_t port     = 443;
-const char *path        = "/services/T5R4XNGC8/BG2THPXDG/MsG8UnB8U7tCNEyyn1D0uRb5";
+const char *path        = "";
 std::string message     = "Hello, World!"; //the actual message to be sent, as a c_str.
 int mesSize = 0; // later size should be set to message.size() + 11;
 std::string mesSizeString = "";
@@ -34,9 +34,8 @@ const char *messageC = "";
 const char *mesSizeC = "";
   WiFiClientSecure client;
   const char *request = "";
-  float adc_reading = 0;
-  float measured_voltage = 0;
-ADC_MODE(ADC_VCC) //set ADC pin to read mode.
+  int adc_reading = 0;
+  int measured_voltage = 0;
 namespace patch
 {
     template <typename T> 
@@ -105,20 +104,21 @@ void setup() {
 uint32_t timer = millis();
 void loop() {
   
-    fetchInsecure();
+    //fetchInsecure();
   if (timer > millis())
   {
     timer = millis();
   }
-  if (millis() - timer > 10000)
+  if (millis() - timer > 5000)
   {
-    adc_reading = analogRead(VOLT_MEAS_PIN);
+    adc_reading = analogRead(A0);
     Serial.print("ADC: ");
     Serial.println(adc_reading);
 
     if(adc_reading < PACK_VOLTS_ADC_MIN)
     {
-      adc_reading = PACK_VOLTS_ADC_MIN;
+      message = "Valkyrie Pack 1 DISCONNECTED";
+      fetchInsecure();
     }
     if(adc_reading > PACK_VOLTS_ADC_MAX)
     {
@@ -128,8 +128,9 @@ void loop() {
     measured_voltage = map(adc_reading, PACK_VOLTS_ADC_MIN, PACK_VOLTS_ADC_MAX, PACK_VOLTS_MIN, PACK_VOLTS_MAX);
     Serial.print("Voltage: ");
     Serial.println(measured_voltage);
-
-    message = patch::to_string(measured_voltage);
+    message = "<!channel> Valkyrie Pack 1 Voltage: ";
+    message += patch::to_string(measured_voltage);
     fetchInsecure();
+    timer = millis();
   }
 }
