@@ -13,6 +13,7 @@
 // Libraries ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #include <ESP8266WiFi.h>
 #include <sstream>
+#include <ESPInsecure.h>
 
 // Variable Constants & Definitions /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define BUTTON_PIN          0
@@ -32,32 +33,9 @@ uint32_t send_msg_timer     = millis();
 const uint32_t SEND_MSG     = 1800000; //30min = 1800000msec 
 uint32_t num_disconnected   = 0;
 
-
-#define STASSID             "MST-PSK-N"
-#define STAPSK              "JoeMiner"
-const char *ssid            = STASSID;
-const char *pass            = STAPSK;
-const char *host            = "hooks.slack.com";
-const uint16_t port         = 443;
-const char *path            = "/services/T5R4XNGC8/BG2THPXDG/MsG8UnB8U7tCNEyyn1D0uRb5";
 std::string message         = "Hello, World!"; //the actual message to be sent, as a c_str.
-int mesSize                 = 0; // later size should be set to message.size() + 11;
-std::string mesSizeString   = "";
-const char *messageC        = "";
-const char *mesSizeC        = "";
 const char *request         = "";
-WiFiClientSecure client;
-
-namespace patch
-{
-    template <typename T> 
-    std::string to_string( const T& n )
-    {
-        std::ostringstream stm ;
-        stm << n ;
-        return stm.str();
-    }
-}
+BearSSL::WiFiClientSecure client;
 
 // Functions //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -112,9 +90,9 @@ void loop()
     if(measured_voltage < PACK_DISCONNECTED && num_loops != 0)
     {
       message = ":boi_matt2: ";
-      message += patch::to_string(PACK_NAME);
+      message += PACK_NAME;
       message += " *DISCONNECTED*";
-      fetchInsecure();
+      postInsecure(&client, message);
       num_disconnected ++;
       send_msg_timer = millis();
       digitalWrite(SEND_MSG_PIN, HIGH); // Blink blue led to indicate msg sent
@@ -126,11 +104,11 @@ void loop()
       Serial.print("Voltage: ");
       Serial.println(measured_voltage);
       message = "<!channel> :fire: ";
-      message += patch::to_string(PACK_NAME);
+      message += PACK_NAME;
       message += " DAMAGED:  *";
       message += patch::to_string(measured_voltage);
       message += "V*";
-      fetchInsecure();
+      postInsecure(&client, message);
       send_msg_timer = millis();
       digitalWrite(SEND_MSG_PIN, HIGH); // Blink blue led to indicate msg sent
       delay(250);
@@ -141,11 +119,11 @@ void loop()
       Serial.print("Voltage: ");
       Serial.println(measured_voltage);
       message = "<!channel> :rotating_light: ";
-      message += patch::to_string(PACK_NAME);
+      message += PACK_NAME;
       message += " CRITICAL:  *";
       message += patch::to_string(measured_voltage);
       message += "V*";
-      fetchInsecure();
+      postInsecure(&client, message);
       send_msg_timer = millis();
       digitalWrite(SEND_MSG_PIN, HIGH); // Blink blue led to indicate msg sent
       delay(250);
@@ -156,11 +134,11 @@ void loop()
       Serial.print("Voltage: ");
       Serial.println(measured_voltage);
       message = ":warning: ";
-      message += patch::to_string(PACK_NAME);
+      message += PACK_NAME;
       message += "LOW:  *";
       message += patch::to_string(measured_voltage);
       message += "V*";
-      fetchInsecure();
+      postInsecure(&client, message);
       send_msg_timer = millis();
       digitalWrite(SEND_MSG_PIN, HIGH); // Blink blue led to indicate msg sent
       delay(250);
@@ -170,12 +148,12 @@ void loop()
     {
       Serial.print("Voltage: ");
       Serial.println(measured_voltage);
-      message = patch::to_string(PACK_LOGO);
-      message += patch::to_string(PACK_NAME);
+      message = PACK_LOGO;
+      message += PACK_NAME;
       message += ":  *";
       message += patch::to_string(measured_voltage);
       message += "V*";
-      fetchInsecure();
+      postInsecure(&client, message);
       send_msg_timer = millis();
       digitalWrite(SEND_MSG_PIN, HIGH); // Blink blue led to indicate msg sent
       delay(250);
@@ -183,35 +161,4 @@ void loop()
     }   
   }
   num_loops ++;
-}
-
-// Try and connect using a WiFiClientBearSSL to specified host:port and dump HTTP response
-void fetchURL(BearSSL::WiFiClientSecure *client, const char *host, const uint16_t port, const char *path) 
-{ 
-  client->connect(host, port);
-  if (!client->connected()) {
-    return;
-  }
-  mesSize = message.length() + 11;
-  mesSizeString = patch::to_string(mesSize);
-  messageC = message.c_str();
-  mesSizeC = mesSizeString.c_str();
-  client->write("POST ");
-  client->write(path);
-  client->write(" HTTP/1.0\r\n");
-  client->write("Host: ");
-  client->write(host);
-  client->write("\r\nUser-Agent: Arduino/1.1\r\n");
-  client->write("Accept: */*\r\nContent-type: application/json\r\nContent-Length: ");
-  client->write(mesSizeC);
-  client->write("\r\n\r\n{\"text\":\"");
-  client->write(messageC);
-  client->write("\"}");
-}
-
-void fetchInsecure() 
-{
-  BearSSL::WiFiClientSecure client;
-  client.setInsecure();
-  fetchURL(&client, host, port, path);
 }
