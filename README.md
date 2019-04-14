@@ -1,4 +1,4 @@
 # VoltageTransmitter_Software
 Software to transmit voltage values to Slack Channel using ESP8266-12
 
-We only currently need WifiPowerBoi to make it work.
+Tutorial includes the current revivsion of Voltage Transmitter as of 4/14, and a trimmed down version showing how to use the newly seperated functions properly.
